@@ -1,0 +1,107 @@
+
+
+services:
+  # API Service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aircraft-data-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://aircraft:password@db:5432/aircraft_data
+      - DEBUG=false
+      - ALLOWED_ORIGINS=["*"]
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - aircraft-network
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: aircraft-data-db
+    environment:
+      POSTGRES_USER: aircraft
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: aircraft_data
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aircraft -d aircraft_data"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aircraft-network
+
+  # Redis Cache (optional for caching)
+  redis:
+    image: redis:7-alpine
+    container_name: aircraft-data-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - aircraft-network
+
+  # Development Service (with hot-reload)
+  api-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: aircraft-data-api-dev
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgresql://aircraft:password@db:5432/aircraft_data
+      - DEBUG=true
+      - ALLOWED_ORIGINS=["*"]
+    volumes:
+      - .:/app
+      - /app/__pycache__
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - dev
+    networks:
+      - aircraft-network
+
+  # Test Runner
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aircraft-data-test
+    command: pytest tests/ -v --cov=. --cov-report=xml
+    environment:
+      - DATABASE_URL=postgresql://aircraft:password@db:5432/aircraft_data
+    volumes:
+      - ./coverage.xml:/app/coverage.xml
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - test
+    networks:
+      - aircraft-network
+
+networks:
+  aircraft-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
