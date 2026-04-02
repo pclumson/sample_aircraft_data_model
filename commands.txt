@@ -1,0 +1,27 @@
+# Local Development
+make install
+make run
+
+# Docker Development
+make docker-build
+make docker-run
+make docker-logs
+
+# Testing
+make test
+make docker-test
+
+# Production
+make deploy
+make backup
+
+# CI/CD
+make ci
+
+
+
+# Run serialization benchmarks
+pytest tests/benchmarks/ -v --benchmark-only
+
+# Run load testing (requires running API first)
+locust --host=http://localhost:8000 --headless -u 100 -r 10 --run-time 1m

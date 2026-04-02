@@ -4,11 +4,35 @@ from .routes import components, loads
 from ..models.database import get_database_engine, init_db
 from ..utils.config import settings
 
+from fastapi import FastAPI, Request
+from fastapi.responses import Response
+import time
+from .metrics import measure_request, get_metrics
+
+
+
 app = FastAPI(
     title="Aircraft Component Data API",
     description="RESTful API for managing aircraft component data models",
     version="1.0.0"
 )
+
+
+
+#app = FastAPI(...)
+
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    measure_request(request, start_time, response.status_code)
+    return response
+
+@app.get("/metrics")
+async def metrics():
+    return Response(content=get_metrics(), media_type=CONTENT_TYPE_LATEST)
+
+
 
 # CORS middleware
 app.add_middleware(
@@ -42,3 +66,8 @@ async def root():
         "docs": "/docs",
         "health": "/health"
     }
+
+
+
+
+
