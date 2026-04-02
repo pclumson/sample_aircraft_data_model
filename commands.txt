@@ -25,3 +25,7 @@ pytest tests/benchmarks/ -v --benchmark-only
 
 # Run load testing (requires running API first)
 locust --host=http://localhost:8000 --headless -u 100 -r 10 --run-time 1m
+
+cd docs
+make html
+# Open _build/html/index.html
